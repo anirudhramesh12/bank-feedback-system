@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bank Customer Feedback</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="main-container">
+        <!-- Sidebar Navigation -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>🏦 Bank Feedback</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#feedback-form" class="nav-item active" onclick="switchSection('form')">📝 Submit Feedback</a>
+                <a href="#my-feedback" class="nav-item" onclick="switchSection('history')">📋 My Feedback</a>
+                <a href="#all-feedback" class="nav-item" onclick="switchSection('all')">👥 All Feedback</a>
+                <a href="#profile" class="nav-item" onclick="switchSection('profile')">👤 My Profile</a>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="content-wrapper">
+            <!-- Header -->
+            <div class="header">
+                <h1>Customer Feedback System</h1>
+                <div class="header-info">
+                    <span id="customer-name">Welcome!</span>
+                    <button onclick="logout()" class="btn-logout">Logout</button>
+                </div>
+            </div>
+
+            <!-- Notification Toast -->
+            <div id="toast" class="toast"></div>
+
+            <!-- Feedback Form Section -->
+            <section id="form-section" class="section active">
+                <div class="form-header">
+                    <h2>Submit Your Feedback</h2>
+                    <p>Help us improve our services</p>
+                </div>
+
+                <!-- Statistics Bar -->
+                <div class="stats-bar">
+                    <div class="stat">
+                        <span class="label">Total Feedback</span>
+                        <span class="value" id="total-count">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">Average Rating</span>
+                        <span class="value" id="avg-rating">0.0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="label">Most Rated Category</span>
+                        <span class="value" id="top-category">-</span>
+                    </div>
+                </div>
+
+                <!-- Feedback Form -->
+                <form id="feedback-form" class="feedback-form">
+                    <input type="hidden" id="user-id" value="2">
+
+                    <div class="form-group">
+                        <label for="name">Your Name *</label>
+                        <input type="text" id="name" placeholder="Enter your full name" required>
+                        <span class="error-msg" id="name-error"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="category">Feedback Category *</label>
+                        <select id="category" required>
+                            <option value="">Select a category...</option>
+                            <option value="ATM">🏧 ATM Services</option>
+                            <option value="LOAN">💰 Loan Services</option>
+                            <option value="ONLINE_BANKING">💻 Online Banking</option>
+                            <option value="CUSTOMER_SUPPORT">📞 Customer Support</option>
+                        </select>
+                        <span class="category-help" id="category-help"></span>
+                        <span class="error-msg" id="category-error"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Rate Your Experience *</label>
+                        <div class="rating-container">
+                            <div class="stars">
+                                <span class="star" data-value="1" title="Poor">★</span>
+                                <span class="star" data-value="2" title="Fair">★</span>
+                                <span class="star" data-value="3" title="Good">★</span>
+                                <span class="star" data-value="4" title="Very Good">★</span>
+                                <span class="star" data-value="5" title="Excellent">★</span>
+                            </div>
+                            <span class="rating-text" id="rating-text">Select a rating</span>
+                        </div>
+                        <input type="hidden" id="rating" required>
+                        <span class="error-msg" id="rating-error"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="comments">Your Comments *</label>
+                        <textarea id="comments" rows="4" placeholder="Please share your feedback, suggestions, or concerns..." required></textarea>
+                        <span class="char-count"><span id="char-count">0</span>/500</span>
+                        <span class="error-msg" id="comments-error"></span>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">✓ Submit Feedback</button>
+                        <button type="reset" class="btn-secondary">↻ Clear Form</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- My Feedback History Section -->
+            <section id="history-section" class="section">
+                <div class="section-header">
+                    <h2>My Feedback History</h2>
+                    <div class="section-controls">
+                        <input type="text" id="my-search" placeholder="Search my feedback..." class="search-input">
+                        <select id="my-sort">
+                            <option value="latest">Latest First</option>
+                            <option value="oldest">Oldest First</option>
+                            <option value="highest-rating">Highest Rating</option>
+                            <option value="lowest-rating">Lowest Rating</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="my-feedback-list" class="feedback-list">
+                    <p class="placeholder">You haven't submitted any feedback yet</p>
+                </div>
+            </section>
+
+            <!-- All Feedback Section -->
+            <section id="all-section" class="section">
+                <div class="section-header">
+                    <h2>Community Feedback</h2>
+                    <div class="section-controls">
+                        <select id="community-filter">
+                            <option value="">All Categories</option>
+                            <option value="ATM">🏧 ATM Services</option>
+                            <option value="LOAN">💰 Loan Services</option>
+                            <option value="ONLINE_BANKING">💻 Online Banking</option>
+                            <option value="CUSTOMER_SUPPORT">📞 Customer Support</option>
+                        </select>
+                        <select id="community-sort">
+                            <option value="latest">Latest First</option>
+                            <option value="oldest">Oldest First</option>
+                            <option value="highest-rating">Highest Rating</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="all-feedback-list" class="feedback-list">
+                    <p class="placeholder">Loading feedback...</p>
+                </div>
+            </section>
+
+            <!-- Profile Section -->
+            <section id="profile-section" class="section">
+                <div class="profile-container">
+                    <div class="profile-header">
+                        <h2>My Profile</h2>
+                    </div>
+                    <div id="profile-info" class="profile-info">
+                        <!-- Profile content loaded via JS -->
+                    </div>
+                    <div class="profile-stats">
+                        <h3>My Feedback Statistics</h3>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <h4>Feedback Submitted</h4>
+                                <p id="profile-total">0</p>
+                            </div>
+                            <div class="stat-card">
+                                <h4>Average Rating Given</h4>
+                                <p id="profile-avg">0.0</p>
+                            </div>
+                            <div class="stat-card">
+                                <h4>Most Used Category</h4>
+                                <p id="profile-category">-</p>
+                            </div>
+                            <div class="stat-card">
+                                <h4>Responses Received</h4>
+                                <p id="profile-responses">0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmation-modal" class="modal">
+        <div class="modal-content">
+            <h3>Confirm Feedback Submission</h3>
+            <p>Are you sure you want to submit this feedback?</p>
+            <div id="confirm-details"></div>
+            <div class="modal-buttons">
+                <button id="confirm-btn" class="btn-primary">✓ Confirm</button>
+                <button onclick="closeConfirmModal()" class="btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

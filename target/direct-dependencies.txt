@@ -1,0 +1,7 @@
+
+The following files have been resolved:
+   org.springframework.boot:spring-boot-starter-web:jar:3.1.0:compile -- module spring.boot.starter.web [auto]
+   org.springframework.boot:spring-boot-starter-data-jpa:jar:3.1.0:compile -- module spring.boot.starter.data.jpa [auto]
+   org.springframework.boot:spring-boot-starter-thymeleaf:jar:3.1.0:compile -- module spring.boot.starter.thymeleaf [auto]
+   org.springframework.boot:spring-boot-starter-security:jar:3.1.0:compile -- module spring.boot.starter.security [auto]
+
