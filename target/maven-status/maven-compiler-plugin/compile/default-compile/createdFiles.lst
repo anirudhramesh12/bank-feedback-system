@@ -1,0 +1,16 @@
+com\bankfeedback\entity\Feedback$Category.class
+com\bankfeedback\entity\Feedback$Status.class
+com\bankfeedback\repository\ResponseRepository.class
+com\bankfeedback\repository\UserRepository.class
+com\bankfeedback\entity\Feedback.class
+com\bankfeedback\BankFeedbackApplication.class
+com\bankfeedback\controller\AuthController.class
+com\bankfeedback\config\DataInitializer.class
+com\bankfeedback\service\UserService.class
+com\bankfeedback\entity\Response.class
+com\bankfeedback\entity\User$Role.class
+com\bankfeedback\service\FeedbackService.class
+com\bankfeedback\entity\User.class
+com\bankfeedback\config\SecurityConfig.class
+com\bankfeedback\repository\FeedbackRepository.class
+com\bankfeedback\controller\FeedbackController.class
