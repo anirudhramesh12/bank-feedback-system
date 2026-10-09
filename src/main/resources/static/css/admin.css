@@ -10,6 +10,51 @@ body {
     display: flex;
 }
 
+[hidden] {
+    display: none !important;
+}
+
+.auth-screen {
+    min-height: 100vh;
+    width: 100%;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: linear-gradient(145deg, #e8edf5, #f9fafc);
+}
+
+.auth-card {
+    width: min(100%, 420px);
+    display: grid;
+    gap: 14px;
+    padding: 32px;
+    background: white;
+    border: 1px solid #dce2ea;
+    border-radius: 8px;
+    box-shadow: 0 12px 34px rgba(28, 43, 63, 0.12);
+}
+
+.auth-card h1 {
+    color: #23364d;
+}
+
+.auth-card p {
+    color: #667085;
+}
+
+.auth-card input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccd4df;
+    border-radius: 5px;
+    font: inherit;
+}
+
+.auth-error {
+    color: #a22929 !important;
+    min-height: 1.2em;
+}
+
 .sidebar {
     width: 250px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -177,7 +222,7 @@ body {
 .table-container {
     background: white;
     border-radius: 8px;
-    overflow: hidden;
+    overflow-x: auto;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     margin-bottom: 20px;
 }

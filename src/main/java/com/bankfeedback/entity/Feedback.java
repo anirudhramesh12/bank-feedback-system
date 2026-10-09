@@ -2,6 +2,7 @@ package com.bankfeedback.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.UUID;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 
@@ -14,9 +15,16 @@ public class Feedback {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "complaint_number", nullable = false, unique = true, updatable = false)
+    private String complaintNumber;
+
     @ManyToOne
     @JoinColumn(name = "user_id")
     private User user;
+
+    @ManyToOne
+    @JoinColumn(name = "assigned_staff_id")
+    private User assignedStaff;
 
     @Enumerated(EnumType.STRING)
     private Category category;
@@ -35,7 +43,7 @@ public class Feedback {
     }
 
     public enum Status {
-        PENDING, RESPONDED
+        PENDING, RESPONDED, ASSIGNED, IN_PROGRESS, RESOLVED, CLOSED
     }
 
     // Constructors
@@ -43,6 +51,7 @@ public class Feedback {
 
     public Feedback(User user, Category category, int rating, String comments) {
         this.user = user;
+        this.complaintNumber = "BF-" + UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
         this.category = category;
         this.rating = rating;
         this.comments = comments;
@@ -54,8 +63,14 @@ public class Feedback {
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
+    public String getComplaintNumber() { return complaintNumber; }
+    public void setComplaintNumber(String complaintNumber) { this.complaintNumber = complaintNumber; }
+
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }
+
+    public User getAssignedStaff() { return assignedStaff; }
+    public void setAssignedStaff(User assignedStaff) { this.assignedStaff = assignedStaff; }
 
     public Category getCategory() { return category; }
     public void setCategory(Category category) { this.category = category; }

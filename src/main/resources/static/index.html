@@ -7,7 +7,25 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <div class="main-container">
+    <section id="auth-screen" class="auth-screen" hidden>
+        <form id="auth-form" class="auth-card">
+            <h1>Bank Feedback</h1>
+            <p id="auth-description">Sign in to manage your feedback</p>
+            <label for="auth-email">Email</label>
+            <input id="auth-email" name="email" type="email" autocomplete="username" required>
+            <div id="register-fields" hidden>
+                <label for="auth-name">Full name</label>
+                <input id="auth-name" name="name" type="text" autocomplete="name" maxlength="120">
+            </div>
+            <label for="auth-password">Password</label>
+            <input id="auth-password" name="password" type="password" autocomplete="current-password" required>
+            <p id="auth-error" class="auth-error" role="alert"></p>
+            <button id="auth-submit" class="btn-primary" type="submit">Sign in</button>
+            <button id="auth-toggle" class="auth-toggle" type="button">Create a customer account</button>
+        </form>
+    </section>
+
+    <div class="main-container" id="app-shell" hidden>
         <!-- Sidebar Navigation -->
         <div class="sidebar">
             <div class="sidebar-header">
@@ -28,7 +46,7 @@
                 <h1>Customer Feedback System</h1>
                 <div class="header-info">
                     <span id="customer-name">Welcome!</span>
-                    <button onclick="logout()" class="btn-logout">Logout</button>
+                    <button id="logout-button" class="btn-logout" type="button">Logout</button>
                 </div>
             </div>
 
@@ -60,11 +78,9 @@
 
                 <!-- Feedback Form -->
                 <form id="feedback-form" class="feedback-form">
-                    <input type="hidden" id="user-id" value="2">
-
                     <div class="form-group">
                         <label for="name">Your Name *</label>
-                        <input type="text" id="name" placeholder="Enter your full name" required>
+                        <input type="text" id="name" readonly required>
                         <span class="error-msg" id="name-error"></span>
                     </div>
 
@@ -202,6 +218,7 @@
         </div>
     </div>
 
+    <script src="js/api.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

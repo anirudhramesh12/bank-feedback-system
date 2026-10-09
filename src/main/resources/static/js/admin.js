@@ -6,87 +6,111 @@ let currentFeedbackId = null;
 let ratingChart = null;
 let statusChart = null;
 let currentDeleteId = null;
+let currentUser = null;
+let staffMembers = [];
 
 document.addEventListener('DOMContentLoaded', function() {
-    const filterBtn = document.getElementById('filter-btn');
-    const resetBtn = document.getElementById('reset-btn');
-    const exportBtn = document.getElementById('export-btn');
-    const searchInput = document.getElementById('search-input');
-    const modal = document.getElementById('response-modal');
-    const deleteModal = document.getElementById('delete-modal');
-    const closeBtn = document.querySelector('.close');
-    const submitResponseBtn = document.getElementById('submit-response');
-    const responseText = document.getElementById('response-text');
-    const confirmDeleteBtn = document.getElementById('confirm-delete');
-
-    // Load all feedback
-    loadAllFeedback();
-
-    // Filter button
-    filterBtn.addEventListener('click', function() {
-        currentPage = 1;
-        applyFilters();
-    });
-
-    // Reset filters
-    resetBtn.addEventListener('click', function() {
-        document.getElementById('search-input').value = '';
-        document.getElementById('category-filter').value = '';
-        document.getElementById('rating-filter').value = '';
-        document.getElementById('status-filter').value = '';
-        document.getElementById('date-from').value = '';
-        document.getElementById('date-to').value = '';
-        currentPage = 1;
-        filteredFeedback = [...allFeedback];
-        displayFeedback();
-    });
-
-    // Search in real-time
-    searchInput.addEventListener('input', function() {
-        currentPage = 1;
-        applyFilters();
-    });
-
-    // Export data
-    exportBtn.addEventListener('click', exportData);
-
-    // Modal close
-    closeBtn.addEventListener('click', closeResponseModal);
-
-    // Close modal when clicking outside
-    window.addEventListener('click', function(event) {
-        if (event.target === modal) {
-            closeResponseModal();
-        }
-        if (event.target === deleteModal) {
-            closeDeleteModal();
-        }
-    });
-
-    // Submit response
-    submitResponseBtn.addEventListener('click', submitResponse);
-
-    // Confirm delete
-    confirmDeleteBtn.addEventListener('click', confirmDelete);
+    document.getElementById('auth-form').addEventListener('submit', submitAdminLogin);
+    document.getElementById('logout-button').addEventListener('click', logoutAdmin);
+    initializeAdmin();
 });
 
+async function initializeAdmin() {
+    try {
+        currentUser = await BankApi.get('/api/auth/me');
+    } catch (error) {
+        document.getElementById('auth-screen').hidden = false;
+        document.getElementById('admin-app').hidden = true;
+        return;
+    }
+
+    if (!['ADMIN', 'STAFF'].includes(currentUser.role)) {
+        document.getElementById('auth-screen').hidden = false;
+        document.getElementById('auth-error').textContent = 'This account cannot access staff tools.';
+        document.getElementById('admin-app').hidden = true;
+        return;
+    }
+
+    document.getElementById('auth-screen').hidden = true;
+    document.getElementById('admin-app').hidden = false;
+    document.getElementById('admin-user').textContent = `${currentUser.name} · ${currentUser.role}`;
+    document.getElementById('export-btn').addEventListener('click', exportData);
+    document.getElementById('filter-btn').addEventListener('click', function() {
+        currentPage = 1;
+        applyFilters();
+    });
+    document.getElementById('reset-btn').addEventListener('click', resetFilters);
+    document.getElementById('search-input').addEventListener('input', function() {
+        currentPage = 1;
+        applyFilters();
+    });
+    document.getElementById('response-modal').querySelector('.close')
+        .addEventListener('click', closeResponseModal);
+    document.getElementById('submit-response').addEventListener('click', submitResponse);
+    document.getElementById('confirm-delete').addEventListener('click', confirmDelete);
+    window.addEventListener('click', function(event) {
+        if (event.target === document.getElementById('response-modal')) closeResponseModal();
+        if (event.target === document.getElementById('delete-modal')) closeDeleteModal();
+    });
+
+    if (currentUser.role === 'ADMIN') {
+        try {
+            staffMembers = await BankApi.get('/api/feedback/staff');
+        } catch (error) {
+            showError('Staff list could not be loaded. Assignment is unavailable.');
+        }
+    }
+    loadAllFeedback();
+}
+
+async function submitAdminLogin(event) {
+    event.preventDefault();
+    const errorElement = document.getElementById('auth-error');
+    errorElement.textContent = '';
+    try {
+        await BankApi.post('/api/auth/login', {
+            email: document.getElementById('auth-email').value.trim(),
+            password: document.getElementById('auth-password').value
+        });
+        await initializeAdmin();
+    } catch (error) {
+        errorElement.textContent = error.message;
+    }
+}
+
+async function logoutAdmin() {
+    try {
+        await BankApi.post('/api/auth/logout', {});
+    } catch (error) {
+        console.error('Logout request failed:', error);
+    } finally {
+        window.location.replace('/admin.html');
+    }
+}
+
+function resetFilters() {
+    document.getElementById('search-input').value = '';
+    document.getElementById('category-filter').value = '';
+    document.getElementById('rating-filter').value = '';
+    document.getElementById('status-filter').value = '';
+    document.getElementById('date-from').value = '';
+    document.getElementById('date-to').value = '';
+    currentPage = 1;
+    filteredFeedback = [...allFeedback];
+    displayFeedback();
+}
+
 // Load all feedback from API
-function loadAllFeedback() {
-    fetch('/api/feedback')
-    .then(response => {
-        if (!response.ok) throw new Error('Failed to load feedback');
-        return response.json();
-    })
-    .then(data => {
-        allFeedback = data || [];
+async function loadAllFeedback() {
+    try {
+        allFeedback = await BankApi.get('/api/feedback') || [];
         filteredFeedback = [...allFeedback];
         displayFeedback();
         updateAnalytics();
-    })
-    .catch(error => {
+    } catch (error) {
         console.error('Error loading feedback:', error);
         showError('Failed to load feedback. Please try again.');
-    });
+    }
 }
 
 // Apply filters
@@ -97,6 +121,9 @@ function applyFilters() {
     const status = document.getElementById('status-filter').value;
     const dateFrom = document.getElementById('date-from').value;
     const dateTo = document.getElementById('date-to').value;
+    const fromDate = dateFrom ? new Date(`${dateFrom}T00:00:00`) : null;
+    const beforeDate = dateTo ? new Date(`${dateTo}T00:00:00`) : null;
+    if (beforeDate) beforeDate.setDate(beforeDate.getDate() + 1);
 
     filteredFeedback = allFeedback.filter(feedback => {
         const matchSearch = !searchTerm || 
@@ -108,11 +135,9 @@ function applyFilters() {
         const matchStatus = !status || feedback.status === status;
         
         let matchDate = true;
-        if (dateFrom || dateTo) {
-            const feedbackDate = new Date(feedback.createdAt).toDateString();
-            if (dateFrom && new Date(dateFrom) > new Date(feedbackDate)) matchDate = false;
-            if (dateTo && new Date(dateTo) < new Date(feedbackDate)) matchDate = false;
-        }
+        const feedbackDate = new Date(feedback.createdAt);
+        if (fromDate && feedbackDate < fromDate) matchDate = false;
+        if (beforeDate && feedbackDate >= beforeDate) matchDate = false;
 
         return matchSearch && matchCategory && matchRating && matchStatus && matchDate;
     });
@@ -123,9 +148,16 @@ function applyFilters() {
 // Display feedback with pagination
 function displayFeedback() {
     const feedbackTbody = document.getElementById('feedback-tbody');
-    
+    feedbackTbody.replaceChildren();
+
     if (filteredFeedback.length === 0) {
-        feedbackTbody.innerHTML = '<tr><td colspan="7" class="no-data">No feedback found</td></tr>';
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.colSpan = 9;
+        cell.className = 'no-data';
+        cell.textContent = 'No feedback found';
+        row.appendChild(cell);
+        feedbackTbody.appendChild(row);
         updatePagination();
         return;
     }
@@ -134,27 +166,19 @@ function displayFeedback() {
     const end = start + itemsPerPage;
     const paginatedFeedback = filteredFeedback.slice(start, end);
 
-    feedbackTbody.innerHTML = '';
     paginatedFeedback.forEach(feedback => {
         const row = document.createElement('tr');
-        const stars = '★'.repeat(feedback.rating) + '☆'.repeat(5 - feedback.rating);
-        const statusClass = feedback.status === 'PENDING' ? 'status-pending' : 'status-responded';
-        const createdDate = new Date(feedback.createdAt).toLocaleDateString();
-        
-        row.innerHTML = `
-            <td><strong>${feedback.user.name}</strong></td>
-            <td>${feedback.category.replace(/_/g, ' ')}</td>
-            <td><span title="${feedback.rating}/5">${stars}</span></td>
-            <td>${feedback.comments.substring(0, 50)}...</td>
-            <td><span class="status-badge ${statusClass}">${feedback.status}</span></td>
-            <td>${createdDate}</td>
-            <td>
-                <div class="action-buttons">
-                    <button class="btn-view" onclick="openResponseModal(${feedback.id})">View</button>
-                    <button class="btn-delete" onclick="openDeleteModal(${feedback.id})">Delete</button>
-                </div>
-            </td>
-        `;
+        row.append(
+            textCell(feedback.complaintNumber),
+            textCell(feedback.user?.name || 'Customer'),
+            textCell(feedback.category.replace(/_/g, ' ')),
+            textCell('★'.repeat(feedback.rating) + '☆'.repeat(5 - feedback.rating)),
+            textCell((feedback.comments || '').substring(0, 80)),
+            statusCell(feedback.status),
+            assignmentCell(feedback),
+            textCell(new Date(feedback.createdAt).toLocaleDateString()),
+            actionCell(feedback)
+        );
         feedbackTbody.appendChild(row);
     });
 
@@ -197,17 +221,22 @@ function openResponseModal(feedbackId) {
         const stars = '★'.repeat(feedback.rating) + '☆'.repeat(5 - feedback.rating);
         const createdDate = new Date(feedback.createdAt).toLocaleString();
         
-        feedbackDetails.innerHTML = `
-            <p><strong>Customer:</strong> ${feedback.user.name} (${feedback.user.email})</p>
-            <p><strong>Category:</strong> ${feedback.category.replace(/_/g, ' ')}</p>
-            <p><strong>Rating:</strong> ${stars} (${feedback.rating}/5)</p>
-            <p><strong>Date:</strong> ${createdDate}</p>
-            <p><strong>Comments:</strong></p>
-            <p>${feedback.comments}</p>
-        `;
+        feedbackDetails.replaceChildren();
+        [
+            `Complaint: ${feedback.complaintNumber}`,
+            `Customer: ${feedback.user.name} (${feedback.user.email})`,
+            `Category: ${feedback.category.replace(/_/g, ' ')}`,
+            `Rating: ${stars} (${feedback.rating}/5)`,
+            `Date: ${createdDate}`,
+            `Comments: ${feedback.comments}`
+        ].forEach(text => {
+            const paragraph = document.createElement('p');
+            paragraph.textContent = text;
+            feedbackDetails.appendChild(paragraph);
+        });
 
-        // Load response history
         loadResponseHistory(feedbackId);
+        loadStatusHistory(feedbackId);
         document.getElementById('response-modal').style.display = 'block';
         document.getElementById('response-text').value = '';
     }
@@ -216,29 +245,56 @@ function openResponseModal(feedbackId) {
 // Load response history
 function loadResponseHistory(feedbackId) {
     const responseHistory = document.getElementById('response-history');
-    responseHistory.innerHTML = '<p style="text-align:center; color:#999;">Loading responses...</p>';
+    responseHistory.textContent = 'Loading responses...';
 
-    fetch(`/api/feedback/${feedbackId}/responses`)
-    .then(response => response.json())
+    BankApi.get(`/api/feedback/${feedbackId}/responses`)
     .then(data => {
         if (!data || data.length === 0) {
-            responseHistory.innerHTML = '<p style="color:#999;">No responses yet</p>';
+            responseHistory.textContent = 'No responses yet';
         } else {
-            responseHistory.innerHTML = '<h4>Response History:</h4>';
+            responseHistory.replaceChildren();
+            const heading = document.createElement('h4');
+            heading.textContent = 'Response History';
+            responseHistory.appendChild(heading);
             data.forEach(response => {
-                const responseDate = new Date(response.createdAt).toLocaleString();
                 const responseItem = document.createElement('div');
                 responseItem.className = 'response-item';
-                responseItem.innerHTML = `
-                    <div class="admin-name">Admin: ${response.admin.name}</div>
-                    <div class="response-date">${responseDate}</div>
-                    <p>${response.responseText}</p>
-                `;
+                const author = document.createElement('div');
+                author.className = 'admin-name';
+                author.textContent = `Staff: ${response.admin.name}`;
+                const date = document.createElement('div');
+                date.className = 'response-date';
+                date.textContent = new Date(response.createdAt).toLocaleString();
+                const text = document.createElement('p');
+                text.textContent = response.responseText;
+                responseItem.append(author, date, text);
                 responseHistory.appendChild(responseItem);
             });
         }
     })
-    .catch(error => console.error('Error loading responses:', error));
+    .catch(error => { responseHistory.textContent = error.message; });
+}
+
+function loadStatusHistory(feedbackId) {
+    const history = document.getElementById('status-history');
+    history.textContent = 'Loading status history...';
+    BankApi.get(`/api/feedback/${feedbackId}/history`)
+        .then(entries => {
+            history.replaceChildren();
+            const heading = document.createElement('h4');
+            heading.textContent = 'Status History';
+            history.appendChild(heading);
+            if (!entries.length) {
+                history.append('No status changes yet');
+                return;
+            }
+            entries.forEach(entry => {
+                const line = document.createElement('p');
+                line.textContent = `${entry.previousStatus || 'Created'} → ${entry.newStatus}: ${entry.changedBy} · ${new Date(entry.createdAt).toLocaleString()}${entry.details ? ` · ${entry.details}` : ''}`;
+                history.appendChild(line);
+            });
+        })
+        .catch(error => { history.textContent = error.message; });
 }
 
 // Close response modal
@@ -261,22 +317,11 @@ function submitResponse() {
         return;
     }
 
-    const responseData = {
+    BankApi.post('/api/feedback/response', {
         feedbackId: currentFeedbackId,
-        adminId: 1,
         responseText: responseTextArea.value
-    };
-
-    fetch('/api/feedback/response', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(responseData)
     })
-    .then(response => {
-        if (!response.ok) throw new Error('Failed to submit response');
-        return response.json();
-    })
-    .then(data => {
+    .then(() => {
         alert('Response submitted successfully!');
         closeResponseModal();
         loadAllFeedback();
@@ -285,6 +330,18 @@ function submitResponse() {
         console.error('Error:', error);
         alert('Error submitting response: ' + error.message);
     });
+}
+
+function assignFeedback(feedbackId, staffId) {
+    BankApi.patch(`/api/feedback/${feedbackId}/assignment`, { staffId })
+        .then(() => loadAllFeedback())
+        .catch(error => alert(`Could not assign complaint: ${error.message}`));
+}
+
+function updateFeedbackStatus(feedbackId, status) {
+    BankApi.patch(`/api/feedback/${feedbackId}/status`, { status })
+        .then(() => loadAllFeedback())
+        .catch(error => alert(`Could not update complaint: ${error.message}`));
 }
 
 // Open delete modal
@@ -303,11 +360,8 @@ function closeDeleteModal() {
 function confirmDelete() {
     if (!currentDeleteId) return;
 
-    fetch(`/api/feedback/${currentDeleteId}`, {
-        method: 'DELETE'
-    })
-    .then(response => {
-        if (!response.ok) throw new Error('Failed to delete feedback');
+    BankApi.delete(`/api/feedback/${currentDeleteId}`)
+    .then(() => {
         alert('Feedback deleted successfully!');
         closeDeleteModal();
         loadAllFeedback();
@@ -325,10 +379,12 @@ function exportData() {
         return;
     }
 
-    let csv = 'Customer,Email,Category,Rating,Comments,Status,Date\n';
+    let csv = 'Complaint ID,Customer,Email,Category,Rating,Comments,Status,Date\n';
     filteredFeedback.forEach(feedback => {
         const createdDate = new Date(feedback.createdAt).toLocaleDateString();
-        csv += `"${feedback.user.name}","${feedback.user.email}","${feedback.category}",${feedback.rating},"${feedback.comments.replace(/"/g, '""')}","${feedback.status}","${createdDate}"\n`;
+        const values = [feedback.complaintNumber, feedback.user.name, feedback.user.email,
+            feedback.category, feedback.rating, feedback.comments, feedback.status, createdDate];
+        csv += values.map(csvValue).join(',') + '\n';
     });
 
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -340,12 +396,19 @@ function exportData() {
     window.URL.revokeObjectURL(url);
 }
 
+function csvValue(value) {
+    let text = String(value ?? '');
+    if (/^[\s]*[=+@-]/.test(text)) text = `'${text}`;
+    return `"${text.replace(/"/g, '""')}"`;
+}
+
 // Update analytics
 function updateAnalytics() {
     const totalFeedback = allFeedback.length;
-    const pendingFeedback = allFeedback.filter(f => f.status === 'PENDING').length;
+        const pendingFeedback = allFeedback.filter(f => ['PENDING', 'ASSIGNED', 'IN_PROGRESS'].includes(f.status)).length;
     const avgRating = totalFeedback > 0 ? (allFeedback.reduce((sum, f) => sum + f.rating, 0) / totalFeedback).toFixed(2) : 0;
-    const responseRate = totalFeedback > 0 ? Math.round(((totalFeedback - pendingFeedback) / totalFeedback) * 100) : 0;
+    const completedCount = allFeedback.filter(f => ['RESPONDED', 'RESOLVED', 'CLOSED'].includes(f.status)).length;
+    const responseRate = totalFeedback > 0 ? Math.round((completedCount / totalFeedback) * 100) : 0;
 
     document.getElementById('total-feedback').textContent = totalFeedback;
     document.getElementById('pending-feedback').textContent = pendingFeedback;
@@ -363,10 +426,8 @@ function updateCharts() {
         return catFeedback.length ? (catFeedback.reduce((sum, f) => sum + f.rating, 0) / catFeedback.length).toFixed(2) : 0;
     });
 
-    const statusCounts = {
-        PENDING: allFeedback.filter(f => f.status === 'PENDING').length,
-        RESPONDED: allFeedback.filter(f => f.status === 'RESPONDED').length
-    };
+    const statuses = ['PENDING', 'ASSIGNED', 'IN_PROGRESS', 'RESPONDED', 'RESOLVED', 'CLOSED'];
+    const statusCounts = statuses.map(status => allFeedback.filter(f => f.status === status).length);
 
     // Rating chart
     if (ratingChart) ratingChart.destroy();
@@ -401,11 +462,11 @@ function updateCharts() {
         statusChart = new Chart(statusCtx, {
             type: 'doughnut',
             data: {
-                labels: ['Pending', 'Responded'],
+                labels: statuses.map(status => status.replace(/_/g, ' ')),
                 datasets: [{
-                    data: [statusCounts.PENDING, statusCounts.RESPONDED],
-                    backgroundColor: ['#fff3cd', '#d4edda'],
-                    borderColor: ['#856404', '#155724'],
+                    data: statusCounts,
+                    backgroundColor: ['#f4d35e', '#6c91bf', '#ee964b', '#7fb069', '#2a9d8f', '#7a7a7a'],
+                    borderColor: ['#a47f00', '#355b86', '#a45100', '#436f31', '#16645b', '#444444'],
                     borderWidth: 2
                 }]
             },
@@ -419,18 +480,97 @@ function updateCharts() {
 
 // Switch tabs
 function switchTab(tab) {
-    const section = document.getElementById(tab === 'dashboard' ? 'analytics-section' : 'analytics-section');
+    const section = document.getElementById('analytics-section');
     if (tab === 'dashboard') {
         section.style.display = 'none';
     } else {
         section.style.display = 'block';
     }
     document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-    event.target.classList.add('active');
+    document.querySelector(`.nav-item[href="#${tab}"]`)?.classList.add('active');
 }
 
 // Show error
 function showError(message) {
     const feedbackTbody = document.getElementById('feedback-tbody');
-    feedbackTbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:red;">${message}</td></tr>`;
+    feedbackTbody.replaceChildren();
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = 9;
+    cell.className = 'no-data';
+    cell.textContent = message;
+    row.appendChild(cell);
+    feedbackTbody.appendChild(row);
+}
+
+function textCell(value) {
+    const cell = document.createElement('td');
+    cell.textContent = value || '';
+    return cell;
+}
+
+function statusCell(value) {
+    const cell = document.createElement('td');
+    const badge = document.createElement('span');
+    badge.className = `status-badge status-${value.toLowerCase().replace(/_/g, '-')}`;
+    badge.textContent = value.replace(/_/g, ' ');
+    cell.appendChild(badge);
+    return cell;
+}
+
+function assignmentCell(feedback) {
+    const cell = document.createElement('td');
+    cell.textContent = feedback.assignedStaff?.name || 'Unassigned';
+    if (currentUser.role !== 'ADMIN' || staffMembers.length === 0) return cell;
+
+    const select = document.createElement('select');
+    select.setAttribute('aria-label', `Assign complaint ${feedback.complaintNumber}`);
+    staffMembers.forEach(staff => {
+        const option = document.createElement('option');
+        option.value = staff.id;
+        option.textContent = staff.name;
+        option.selected = feedback.assignedStaff?.id === staff.id;
+        select.appendChild(option);
+    });
+    const button = document.createElement('button');
+    button.className = 'btn-view';
+    button.textContent = 'Assign';
+    button.addEventListener('click', () => assignFeedback(feedback.id, Number(select.value)));
+    cell.append(select, button);
+    return cell;
+}
+
+function actionCell(feedback) {
+    const cell = document.createElement('td');
+    const actions = document.createElement('div');
+    actions.className = 'action-buttons';
+    const viewButton = document.createElement('button');
+    viewButton.className = 'btn-view';
+    viewButton.textContent = 'View';
+    viewButton.addEventListener('click', () => openResponseModal(feedback.id));
+    actions.appendChild(viewButton);
+
+    const nextStatus = {
+        ASSIGNED: 'IN_PROGRESS',
+        IN_PROGRESS: 'RESOLVED',
+        RESPONDED: 'CLOSED',
+        RESOLVED: 'CLOSED'
+    }[feedback.status];
+    if (nextStatus && (currentUser.role === 'ADMIN' || feedback.assignedStaff?.id === currentUser.id)) {
+        const statusButton = document.createElement('button');
+        statusButton.className = 'btn-view';
+        statusButton.textContent = nextStatus.replace(/_/g, ' ');
+        statusButton.addEventListener('click', () => updateFeedbackStatus(feedback.id, nextStatus));
+        actions.appendChild(statusButton);
+    }
+
+    if (currentUser.role === 'ADMIN') {
+        const deleteButton = document.createElement('button');
+        deleteButton.className = 'btn-delete';
+        deleteButton.textContent = 'Delete';
+        deleteButton.addEventListener('click', () => openDeleteModal(feedback.id));
+        actions.appendChild(deleteButton);
+    }
+    cell.appendChild(actions);
+    return cell;
 }
