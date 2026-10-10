@@ -8,6 +8,21 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
+    <section id="auth-screen" class="auth-screen" hidden>
+        <form id="auth-form" class="auth-card">
+            <h1>Staff sign in</h1>
+            <p>Access the complaint management dashboard</p>
+            <label for="auth-email">Email</label>
+            <input id="auth-email" type="email" autocomplete="username" required>
+            <label for="auth-password">Password</label>
+            <input id="auth-password" type="password" autocomplete="current-password" required>
+            <p id="auth-error" class="auth-error" role="alert"></p>
+            <button class="btn-primary" type="submit">Sign in</button>
+            <a href="/">Customer sign in</a>
+        </form>
+    </section>
+
+    <div id="admin-app" hidden>
     <div class="sidebar">
         <div class="sidebar-header">
             <h2>Bank Admin</h2>
@@ -21,7 +36,11 @@
     <div class="main-content">
         <div class="header">
             <h1>Customer Feedback Management</h1>
-            <button id="export-btn" class="btn-export">📥 Export Data</button>
+            <div class="header-actions">
+                <span id="admin-user"></span>
+                <button id="export-btn" class="btn-export">Export Data</button>
+                <button id="logout-button" class="btn-secondary" type="button">Logout</button>
+            </div>
         </div>
 
         <!-- Search and Filter Section -->
@@ -50,6 +69,10 @@
                     <option value="">All Status</option>
                     <option value="PENDING">Pending</option>
                     <option value="RESPONDED">Responded</option>
+                    <option value="ASSIGNED">Assigned</option>
+                    <option value="IN_PROGRESS">In Progress</option>
+                    <option value="RESOLVED">Resolved</option>
+                    <option value="CLOSED">Closed</option>
                 </select>
                 <input type="date" id="date-from" placeholder="From Date">
                 <input type="date" id="date-to" placeholder="To Date">
@@ -63,11 +86,13 @@
             <table id="feedback-table" class="feedback-table">
                 <thead>
                     <tr>
+                        <th>Complaint ID</th>
                         <th>Customer</th>
                         <th>Category</th>
                         <th>Rating</th>
                         <th>Comments</th>
                         <th>Status</th>
+                        <th>Assigned Staff</th>
                         <th>Date</th>
                         <th>Actions</th>
                     </tr>
@@ -113,6 +138,7 @@
             </div>
         </div>
     </div>
+    </div>
 
     <!-- Response Modal -->
     <div id="response-modal" class="modal">
@@ -121,6 +147,7 @@
             <h2>View & Respond to Feedback</h2>
             <div id="feedback-details" class="feedback-details"></div>
             <div id="response-history" class="response-history"></div>
+            <div id="status-history" class="response-history"></div>
             <div class="response-form">
                 <textarea id="response-text" rows="4" placeholder="Enter your response..."></textarea>
                 <button id="submit-response" class="btn-primary">Submit Response</button>
@@ -140,6 +167,7 @@
         </div>
     </div>
 
+    <script src="js/api.js"></script>
     <script src="js/admin.js"></script>
 </body>
 </html>

@@ -2,6 +2,7 @@ package com.bankfeedback.exception;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.AuthenticationException;
@@ -37,6 +38,7 @@ public class ApiExceptionHandler {
     }
 
     private ResponseEntity<ProblemDetail> problem(HttpStatus status, String detail) {
-        return ResponseEntity.status(status).body(ProblemDetail.forStatusAndDetail(status, detail));
+        return ResponseEntity.status(status.value())
+            .body(ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(status.value()), detail));
     }
 }

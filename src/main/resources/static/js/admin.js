@@ -12,8 +12,15 @@ let staffMembers = [];
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('auth-form').addEventListener('submit', submitAdminLogin);
     document.getElementById('logout-button').addEventListener('click', logoutAdmin);
+    document.getElementById('nav-toggle').addEventListener('click', toggleAdminNav);
     initializeAdmin();
 });
+
+function toggleAdminNav() {
+    const sidebar = document.getElementById('staff-sidebar');
+    const isOpen = sidebar.classList.toggle('open');
+    document.getElementById('nav-toggle').setAttribute('aria-expanded', String(isOpen));
+}
 
 async function initializeAdmin() {
     try {
@@ -488,6 +495,8 @@ function switchTab(tab) {
     }
     document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
     document.querySelector(`.nav-item[href="#${tab}"]`)?.classList.add('active');
+    document.getElementById('staff-sidebar').classList.remove('open');
+    document.getElementById('nav-toggle').setAttribute('aria-expanded', 'false');
 }
 
 // Show error

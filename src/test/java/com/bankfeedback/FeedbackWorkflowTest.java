@@ -1,7 +1,6 @@
 package com.bankfeedback;
 
 import com.bankfeedback.entity.Feedback;
-import com.bankfeedback.entity.FeedbackStatusHistory;
 import com.bankfeedback.entity.User;
 import com.bankfeedback.repository.FeedbackRepository;
 import com.bankfeedback.repository.FeedbackStatusHistoryRepository;
@@ -19,6 +18,9 @@ import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequ
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import jakarta.servlet.http.HttpSession;
+
+import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -61,12 +63,12 @@ class FeedbackWorkflowTest {
     @Test
     void customerSubmissionUsesSessionIdentityAndCommunityOmitsCustomerIdentity() throws Exception {
         User customer = saveUser("customer@example.com", User.Role.CUSTOMER);
-        MockHttpSession customerSession = login(customer.getEmail());
+        MockHttpSession customerSession = login(Objects.requireNonNull(customer.getEmail()));
 
         MvcResult created = mockMvc.perform(post("/api/feedback")
                         .session(customerSession)
-                        .with(SecurityMockMvcRequestPostProcessors.csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(Objects.requireNonNull(SecurityMockMvcRequestPostProcessors.csrf()))
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
                         .content("""
                                 {"userId":99999,"category":"ATM","rating":4,"comments":"The ATM was available"}
                                 """))
@@ -93,48 +95,49 @@ class FeedbackWorkflowTest {
         Feedback feedback = feedbackRepository.save(new Feedback(customer, Feedback.Category.LOAN, 2,
                 "Please review my loan application"));
 
-        MockHttpSession adminSession = login(admin.getEmail());
+        MockHttpSession adminSession = login(Objects.requireNonNull(admin.getEmail()));
         mockMvc.perform(patch("/api/feedback/{id}/assignment", feedback.getId())
                         .session(adminSession)
-                        .with(SecurityMockMvcRequestPostProcessors.csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(Objects.requireNonNull(SecurityMockMvcRequestPostProcessors.csrf()))
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
                         .content("{\"staffId\":" + staff.getId() + "}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("ASSIGNED"))
                 .andExpect(jsonPath("$.assignedStaff.id").value(staff.getId()));
 
-        MockHttpSession staffSession = login(staff.getEmail());
+        MockHttpSession staffSession = login(Objects.requireNonNull(staff.getEmail()));
         mockMvc.perform(patch("/api/feedback/{id}/status", feedback.getId())
                         .session(staffSession)
-                        .with(SecurityMockMvcRequestPostProcessors.csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(Objects.requireNonNull(SecurityMockMvcRequestPostProcessors.csrf()))
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
                         .content("{\"status\":\"IN_PROGRESS\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("IN_PROGRESS"));
         mockMvc.perform(patch("/api/feedback/{id}/status", feedback.getId())
                         .session(staffSession)
-                        .with(SecurityMockMvcRequestPostProcessors.csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(Objects.requireNonNull(SecurityMockMvcRequestPostProcessors.csrf()))
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
                         .content("{\"status\":\"RESOLVED\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("RESOLVED"));
 
         mockMvc.perform(patch("/api/feedback/{id}/status", feedback.getId())
                         .session(adminSession)
-                        .with(SecurityMockMvcRequestPostProcessors.csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(Objects.requireNonNull(SecurityMockMvcRequestPostProcessors.csrf()))
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
                         .content("{\"status\":\"CLOSED\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CLOSED"));
 
         mockMvc.perform(post("/api/feedback/response")
                         .session(staffSession)
-                        .with(SecurityMockMvcRequestPostProcessors.csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(Objects.requireNonNull(SecurityMockMvcRequestPostProcessors.csrf()))
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
                         .content("{\"feedbackId\":" + feedback.getId() + ",\"responseText\":\"Reopen\"}"))
                 .andExpect(status().isConflict());
 
-        assertEquals(4, historyRepository.findByFeedbackIdOrderByCreatedAtAsc(feedback.getId()).size());
+        assertEquals(4, historyRepository.findByFeedbackIdOrderByCreatedAtAsc(
+                Objects.requireNonNull(feedback.getId())).size());
         mockMvc.perform(get("/api/feedback/{id}/history", feedback.getId()).session(staffSession))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[2].newStatus").value("RESOLVED"))
@@ -149,15 +152,15 @@ class FeedbackWorkflowTest {
                 "The machine did not work"));
 
         mockMvc.perform(patch("/api/feedback/{id}/status", feedback.getId())
-                        .session(login(staff.getEmail()))
-                        .with(SecurityMockMvcRequestPostProcessors.csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .session(login(Objects.requireNonNull(staff.getEmail())))
+                        .with(Objects.requireNonNull(SecurityMockMvcRequestPostProcessors.csrf()))
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
                         .content("{\"status\":\"IN_PROGRESS\"}"))
                 .andExpect(status().isForbidden());
         mockMvc.perform(post("/api/feedback/response")
-                        .session(login(staff.getEmail()))
-                        .with(SecurityMockMvcRequestPostProcessors.csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .session(login(Objects.requireNonNull(staff.getEmail())))
+                        .with(Objects.requireNonNull(SecurityMockMvcRequestPostProcessors.csrf()))
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
                         .content("{\"feedbackId\":" + feedback.getId() + ",\"responseText\":\"Unauthorized response\"}"))
                 .andExpect(status().isForbidden());
     }
@@ -168,14 +171,19 @@ class FeedbackWorkflowTest {
     }
 
     private MockHttpSession login(String email) throws Exception {
+        String loginPayload = Objects.requireNonNull("""
+                {"email":"%s","password":"a-strong-password"}
+                """.formatted(email));
         MvcResult result = mockMvc.perform(post("/api/auth/login")
-                        .with(SecurityMockMvcRequestPostProcessors.csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"email":"%s","password":"a-strong-password"}
-                                """.formatted(email)))
+                        .with(Objects.requireNonNull(SecurityMockMvcRequestPostProcessors.csrf()))
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                        .content(loginPayload))
                 .andExpect(status().isOk())
                 .andReturn();
-        return (MockHttpSession) result.getRequest().getSession(false);
+                HttpSession session = result.getRequest().getSession(false);
+                if (session instanceof MockHttpSession mockSession) {
+                        return mockSession;
+                }
+                throw new AssertionError("Login did not create a mock session");
     }
 }

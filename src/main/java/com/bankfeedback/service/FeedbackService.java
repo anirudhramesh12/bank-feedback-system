@@ -1,6 +1,7 @@
 package com.bankfeedback.service;
 
 import com.bankfeedback.entity.Feedback;
+import org.springframework.lang.NonNull;
 import com.bankfeedback.entity.FeedbackStatusHistory;
 import com.bankfeedback.entity.Response;
 import com.bankfeedback.entity.User;
@@ -12,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
+import org.springframework.lang.Nullable;
 import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.util.Optional;
@@ -32,9 +34,10 @@ public class FeedbackService {
     private FeedbackStatusHistoryRepository statusHistoryRepository;
 
     public Feedback submitFeedback(Long userId, Feedback.Category category, int rating, String comments) {
-        Optional<User> user = userRepository.findById(userId);
+        Optional<User> user = userRepository.findById(java.util.Objects.requireNonNull(userId));
         if (user.isPresent()) {
-            Feedback feedback = new Feedback(user.get(), category, rating, comments);
+                Feedback feedback = new Feedback(java.util.Objects.requireNonNull(user.get()),
+                    java.util.Objects.requireNonNull(category), rating, java.util.Objects.requireNonNull(comments));
             return feedbackRepository.save(feedback);
         }
         throw new RuntimeException("User not found");
@@ -45,14 +48,14 @@ public class FeedbackService {
     }
 
     public List<Feedback> getFeedbackForUser(Long userId) {
-        return feedbackRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        return feedbackRepository.findByUserIdOrderByCreatedAtDesc(java.util.Objects.requireNonNull(userId));
     }
 
-    public boolean belongsToUser(Long feedbackId, String email) {
+    public boolean belongsToUser(@NonNull Long feedbackId, @NonNull String email) {
         return feedbackRepository.existsByIdAndUserEmail(feedbackId, email);
     }
 
-    public List<Feedback> filterFeedback(Feedback.Category category, Integer rating) {
+    public List<Feedback> filterFeedback(@Nullable Feedback.Category category, @Nullable Integer rating) {
         if (category != null && rating != null) {
             return feedbackRepository.findByCategoryAndRating(category, rating);
         } else if (category != null) {
@@ -65,11 +68,11 @@ public class FeedbackService {
 
     @Transactional
     public Response respondToFeedback(Long feedbackId, Long adminId, String responseText) {
-        Optional<Feedback> feedback = feedbackRepository.findById(feedbackId);
-        Optional<User> admin = userRepository.findById(adminId);
+        Optional<Feedback> feedback = feedbackRepository.findById(java.util.Objects.requireNonNull(feedbackId));
+        Optional<User> admin = userRepository.findById(java.util.Objects.requireNonNull(adminId));
         if (feedback.isPresent() && admin.isPresent()
             && (admin.get().getRole() == User.Role.ADMIN || admin.get().getRole() == User.Role.STAFF)) {
-            Feedback target = feedback.get();
+            Feedback target = java.util.Objects.requireNonNull(feedback.get());
             User actor = admin.get();
             if (target.getStatus() == Feedback.Status.RESOLVED || target.getStatus() == Feedback.Status.CLOSED) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Resolved complaints cannot receive another response");
@@ -78,8 +81,8 @@ public class FeedbackService {
                     && (target.getAssignedStaff() == null || !target.getAssignedStaff().getId().equals(actor.getId()))) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Complaint is not assigned to this staff member");
             }
-            Response response = new Response(target, actor, responseText);
-            Feedback.Status previousStatus = target.getStatus();
+            Response response = new Response(target, actor, java.util.Objects.requireNonNull(responseText));
+            Feedback.Status previousStatus = java.util.Objects.requireNonNull(target.getStatus());
             target.setStatus(Feedback.Status.RESPONDED);
             feedbackRepository.save(target);
             Response savedResponse = responseRepository.save(response);
@@ -92,15 +95,15 @@ public class FeedbackService {
 
     @Transactional
     public Feedback assignFeedback(Long feedbackId, Long staffId, User actor) {
-        Feedback feedback = feedbackRepository.findById(feedbackId)
+        Feedback feedback = feedbackRepository.findById(java.util.Objects.requireNonNull(feedbackId))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Feedback not found"));
         if (feedback.getStatus() == Feedback.Status.RESOLVED || feedback.getStatus() == Feedback.Status.CLOSED) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Resolved complaints cannot be reassigned");
         }
-        User staff = userRepository.findById(staffId)
+        User staff = userRepository.findById(java.util.Objects.requireNonNull(staffId))
                 .filter(user -> user.getRole() == User.Role.STAFF)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Select a valid staff account"));
-        Feedback.Status previousStatus = feedback.getStatus();
+        Feedback.Status previousStatus = java.util.Objects.requireNonNull(feedback.getStatus());
         feedback.setAssignedStaff(staff);
         feedback.setStatus(Feedback.Status.ASSIGNED);
         Feedback saved = feedbackRepository.save(feedback);
@@ -111,14 +114,14 @@ public class FeedbackService {
 
     @Transactional
     public Feedback updateStatus(Long feedbackId, Feedback.Status newStatus, User actor) {
-        Feedback feedback = feedbackRepository.findById(feedbackId)
+        Feedback feedback = feedbackRepository.findById(java.util.Objects.requireNonNull(feedbackId))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Feedback not found"));
         if (actor.getRole() == User.Role.STAFF
                 && (feedback.getAssignedStaff() == null || !feedback.getAssignedStaff().getId().equals(actor.getId()))) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Complaint is not assigned to this staff member");
         }
 
-        Feedback.Status previousStatus = feedback.getStatus();
+        Feedback.Status previousStatus = java.util.Objects.requireNonNull(feedback.getStatus());
         boolean validTransition = switch (previousStatus) {
             case ASSIGNED -> newStatus == Feedback.Status.IN_PROGRESS;
             case IN_PROGRESS -> newStatus == Feedback.Status.RESOLVED;
@@ -137,27 +140,28 @@ public class FeedbackService {
     }
 
     public List<FeedbackStatusHistory> getStatusHistory(Long feedbackId) {
-        return statusHistoryRepository.findByFeedbackIdOrderByCreatedAtAsc(feedbackId);
+        return statusHistoryRepository.findByFeedbackIdOrderByCreatedAtAsc(java.util.Objects.requireNonNull(feedbackId));
     }
 
     private void recordStatusChange(Feedback feedback, User actor, Feedback.Status previousStatus,
-                                    Feedback.Status newStatus, String details) {
-        statusHistoryRepository.save(new FeedbackStatusHistory(feedback, actor, previousStatus, newStatus, details));
+                                    Feedback.Status newStatus, @Nullable String details) {
+        statusHistoryRepository.save(new FeedbackStatusHistory(feedback, actor,
+            java.util.Objects.requireNonNull(previousStatus), newStatus, details));
     }
 
     public List<Response> getResponsesForFeedback(Long feedbackId) {
-        return responseRepository.findByFeedbackId(feedbackId);
+        return responseRepository.findByFeedbackId(java.util.Objects.requireNonNull(feedbackId));
     }
 
     public void deleteFeedback(Long feedbackId) {
-        Optional<Feedback> feedback = feedbackRepository.findById(feedbackId);
+        Optional<Feedback> feedback = feedbackRepository.findById(java.util.Objects.requireNonNull(feedbackId));
         if (feedback.isPresent()) {
-            statusHistoryRepository.deleteByFeedbackId(feedbackId);
+            statusHistoryRepository.deleteByFeedbackId(java.util.Objects.requireNonNull(feedbackId));
             // Delete all responses for this feedback
-            List<Response> responses = responseRepository.findByFeedbackId(feedbackId);
+            List<Response> responses = responseRepository.findByFeedbackId(java.util.Objects.requireNonNull(feedbackId));
             responseRepository.deleteAll(responses);
             // Delete the feedback
-            feedbackRepository.deleteById(feedbackId);
+            feedbackRepository.deleteById(java.util.Objects.requireNonNull(feedbackId));
         } else {
             throw new RuntimeException("Feedback not found");
         }

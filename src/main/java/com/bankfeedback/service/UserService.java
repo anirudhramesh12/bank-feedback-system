@@ -20,15 +20,16 @@ public class UserService {
     private PasswordEncoder passwordEncoder;
 
     public User registerCustomer(String name, String email, String password) {
-        if (userRepository.findByEmail(email).isPresent()) {
+        if (userRepository.findByEmail(java.util.Objects.requireNonNull(email)).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
         }
-        User user = new User(name, email, passwordEncoder.encode(password), User.Role.CUSTOMER);
+        User user = new User(java.util.Objects.requireNonNull(name), email,
+            passwordEncoder.encode(java.util.Objects.requireNonNull(password)), User.Role.CUSTOMER);
         return userRepository.save(user);
     }
 
     public Optional<User> findByEmail(String email) {
-        return userRepository.findByEmail(email);
+        return userRepository.findByEmail(java.util.Objects.requireNonNull(email));
     }
 
     public List<User> getStaff() {
@@ -36,7 +37,7 @@ public class UserService {
     }
 
     public boolean authenticate(String email, String password) {
-        Optional<User> user = userRepository.findByEmail(email);
+        Optional<User> user = userRepository.findByEmail(java.util.Objects.requireNonNull(email));
         return user.isPresent() && passwordEncoder.matches(password, user.get().getPassword());
     }
 }

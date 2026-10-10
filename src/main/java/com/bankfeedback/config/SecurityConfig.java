@@ -8,7 +8,6 @@ import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -31,10 +30,10 @@ public class SecurityConfig {
                 .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler()))
             .securityContext(context -> context.securityContextRepository(securityContextRepository))
             .sessionManagement(session -> session.sessionFixation().migrateSession())
-            .requestCache(AbstractHttpConfigurer::disable)
-            .formLogin(AbstractHttpConfigurer::disable)
-            .httpBasic(AbstractHttpConfigurer::disable)
-            .logout(AbstractHttpConfigurer::disable)
+            .requestCache(configurer -> configurer.disable())
+            .formLogin(configurer -> configurer.disable())
+            .httpBasic(configurer -> configurer.disable())
+            .logout(configurer -> configurer.disable())
             .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers("/", "/index.html", "/css/**", "/js/**", "/favicon.ico").permitAll()
                 .requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/csrf").permitAll()

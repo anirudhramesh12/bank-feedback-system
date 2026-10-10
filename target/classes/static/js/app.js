@@ -1,7 +1,7 @@
 let allFeedback = [];
 let userFeedback = [];
-const currentUserId = 2; // Default customer user ID
 let currentUser = null;
+let registrationMode = false;
 
 const categoryHelp = {
     'ATM': '🏧 Share your experience with ATM services including availability, functionality, and user interface.',
@@ -18,15 +18,69 @@ const categoryLabels = {
 };
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize
-    loadUserData();
-    loadAllFeedback();
-    setupEventListeners();
-    updateStatistics();
-    
-    // Set user ID to logged-in user
-    document.getElementById('user-id').value = currentUserId;
+    document.getElementById('auth-form').addEventListener('submit', submitAuthForm);
+    document.getElementById('auth-toggle').addEventListener('click', toggleRegistrationMode);
+    document.getElementById('logout-button').addEventListener('click', logout);
+    initializeCustomerApp();
 });
+
+async function initializeCustomerApp() {
+    try {
+        currentUser = await BankApi.get('/api/auth/me');
+        if (currentUser.role !== 'CUSTOMER') {
+            window.location.replace('/admin.html');
+            return;
+        }
+        document.getElementById('auth-screen').hidden = true;
+        document.getElementById('app-shell').hidden = false;
+        document.getElementById('customer-name').textContent = `Welcome, ${currentUser.name}!`;
+        document.getElementById('name').value = currentUser.name;
+        document.getElementById('profile-info').textContent = `${currentUser.name} · ${currentUser.email}`;
+        setupEventListeners();
+        await loadAllFeedback();
+    } catch (error) {
+        document.getElementById('auth-screen').hidden = false;
+        document.getElementById('app-shell').hidden = true;
+    }
+}
+
+function toggleRegistrationMode() {
+    registrationMode = !registrationMode;
+    const registerFields = document.getElementById('register-fields');
+    registerFields.hidden = !registrationMode;
+    document.getElementById('auth-name').required = registrationMode;
+    document.getElementById('auth-password').autocomplete = registrationMode ? 'new-password' : 'current-password';
+    document.getElementById('auth-description').textContent = registrationMode
+        ? 'Create your customer account' : 'Sign in to manage your feedback';
+    document.getElementById('auth-submit').textContent = registrationMode ? 'Create account' : 'Sign in';
+    document.getElementById('auth-toggle').textContent = registrationMode
+        ? 'Already registered? Sign in' : 'Create a customer account';
+    document.getElementById('auth-error').textContent = '';
+}
+
+async function submitAuthForm(event) {
+    event.preventDefault();
+    const error = document.getElementById('auth-error');
+    error.textContent = '';
+    const email = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value;
+    try {
+        if (registrationMode) {
+            await BankApi.post('/api/auth/register', {
+                name: document.getElementById('auth-name').value.trim(), email, password
+            });
+        }
+        const user = await BankApi.post('/api/auth/login', { email, password });
+        if (user.role === 'CUSTOMER') {
+            currentUser = user;
+            await initializeCustomerApp();
+        } else {
+            window.location.replace('/admin.html');
+        }
+    } catch (requestError) {
+        error.textContent = requestError.message;
+    }
+}
 
 function setupEventListeners() {
     const form = document.getElementById('feedback-form');
@@ -113,33 +167,21 @@ function setupEventListeners() {
     });
 }
 
-function loadUserData() {
-    // In a real app, this would fetch from API
-    currentUser = {
-        id: currentUserId,
-        name: 'Jane Doe',
-        email: 'jane@example.com'
-    };
-    document.getElementById('customer-name').textContent = `Welcome, ${currentUser.name}!`;
-}
-
-function loadAllFeedback() {
-    fetch('/api/feedback')
-    .then(response => {
-        if (!response.ok) throw new Error('Failed to load feedback');
-        return response.json();
-    })
-    .then(data => {
-        allFeedback = data || [];
-        userFeedback = allFeedback.filter(f => f.user.id === currentUserId);
+async function loadAllFeedback() {
+    try {
+        const [mine, community] = await Promise.all([
+            BankApi.get('/api/feedback/mine'),
+            BankApi.get('/api/feedback/community')
+        ]);
+        userFeedback = mine || [];
+        allFeedback = community || [];
         displayAllFeedback();
         displayMyFeedback();
         updateStatistics();
-    })
-    .catch(error => {
+    } catch (error) {
         console.error('Error loading feedback:', error);
         showToast('Error loading feedback', 'error');
-    });
+    }
 }
 
 function validateForm() {
@@ -235,12 +277,17 @@ function showConfirmationModal() {
     const comments = document.getElementById('comments').value;
 
     const confirmDetails = document.getElementById('confirm-details');
-    confirmDetails.innerHTML = `
-        <p><strong>Name:</strong> ${name}</p>
-        <p><strong>Category:</strong> ${categoryLabels[category]}</p>
-        <p><strong>Rating:</strong> ${'★'.repeat(rating)}${'☆'.repeat(5-rating)} (${rating}/5)</p>
-        <p><strong>Comments:</strong> ${comments.substring(0, 100)}${comments.length > 100 ? '...' : ''}</p>
-    `;
+    confirmDetails.replaceChildren();
+    [
+        `Name: ${name}`,
+        `Category: ${categoryLabels[category]}`,
+        `Rating: ${'★'.repeat(rating)}${'☆'.repeat(5 - rating)} (${rating}/5)`,
+        `Comments: ${comments.substring(0, 100)}${comments.length > 100 ? '...' : ''}`
+    ].forEach(text => {
+        const paragraph = document.createElement('p');
+        paragraph.textContent = text;
+        confirmDetails.appendChild(paragraph);
+    });
     document.getElementById('confirmation-modal').classList.add('show');
 }
 
@@ -248,81 +295,95 @@ function closeConfirmModal() {
     document.getElementById('confirmation-modal').classList.remove('show');
 }
 
-function submitFeedback() {
+async function submitFeedback() {
     const formData = {
-        userId: parseInt(document.getElementById('user-id').value),
         category: document.getElementById('category').value,
         rating: parseInt(document.getElementById('rating').value),
         comments: document.getElementById('comments').value
     };
 
-    fetch('/api/feedback', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-    })
-    .then(response => {
-        if (!response.ok) throw new Error('Failed to submit feedback');
-        return response.json();
-    })
-    .then(data => {
+    try {
+        const created = await BankApi.post('/api/feedback', formData);
         showToast('✓ Feedback submitted successfully!', 'success');
         closeConfirmModal();
         document.getElementById('feedback-form').reset();
+        document.getElementById('name').value = currentUser.name;
         updateStarDisplay(0);
         document.getElementById('char-count').textContent = '0';
         document.getElementById('category-help').textContent = '';
-        loadAllFeedback();
-    })
-    .catch(error => {
+        await loadAllFeedback();
+    } catch (error) {
         console.error('Error:', error);
-        showToast('Error submitting feedback. Please try again.', 'error');
-    });
+        showToast(error.message || 'Error submitting feedback. Please try again.', 'error');
+    }
 }
 
 function displayMyFeedback() {
     const myFeedbackList = document.getElementById('my-feedback-list');
     
     if (userFeedback.length === 0) {
-        myFeedbackList.innerHTML = '<p class="placeholder">You haven\'t submitted any feedback yet</p>';
+        showEmptyState(myFeedbackList, 'You haven\'t submitted any feedback yet');
         return;
     }
 
-    myFeedbackList.innerHTML = userFeedback.map(fb => createFeedbackCard(fb, true)).join('');
+    renderFeedbackCards(myFeedbackList, userFeedback, true);
 }
 
 function displayAllFeedback() {
     const allFeedbackList = document.getElementById('all-feedback-list');
     
     if (allFeedback.length === 0) {
-        allFeedbackList.innerHTML = '<p class="placeholder">No feedback available yet</p>';
+        showEmptyState(allFeedbackList, 'No feedback available yet');
         return;
     }
 
-    allFeedbackList.innerHTML = allFeedback.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-        .map(fb => createFeedbackCard(fb, false)).join('');
+    renderFeedbackCards(allFeedbackList,
+        [...allFeedback].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)), false);
 }
 
 function createFeedbackCard(feedback, isOwn) {
-    const createdDate = new Date(feedback.createdAt).toLocaleDateString();
-    const stars = '★'.repeat(feedback.rating) + '☆'.repeat(5 - feedback.rating);
-    const statusClass = feedback.status === 'PENDING' ? 'status-pending' : 'status-responded';
-    const statusText = feedback.status === 'PENDING' ? '⏳ Pending Response' : '✓ Responded';
+    const card = document.createElement('article');
+    card.className = 'feedback-card';
+    const header = document.createElement('div');
+    header.className = 'feedback-header';
+    const details = document.createElement('div');
+    const customer = document.createElement('div');
+    customer.className = 'feedback-customer';
+    customer.textContent = isOwn ? currentUser.name : 'Bank customer';
+    const category = document.createElement('span');
+    category.className = 'feedback-category';
+    category.textContent = categoryLabels[feedback.category] || feedback.category;
+    details.append(customer, category);
+    const date = document.createElement('div');
+    date.className = 'feedback-date';
+    date.textContent = new Date(feedback.createdAt).toLocaleDateString();
+    header.append(details, date);
 
-    return `
-        <div class="feedback-card">
-            <div class="feedback-header">
-                <div>
-                    <div class="feedback-customer">${feedback.user.name}</div>
-                    <span class="feedback-category">${categoryLabels[feedback.category]}</span>
-                </div>
-                <div class="feedback-date">${createdDate}</div>
-            </div>
-            <div class="feedback-rating">${stars}</div>
-            <div class="feedback-comments">${feedback.comments}</div>
-            <span class="feedback-status ${statusClass}">${statusText}</span>
-        </div>
-    `;
+    const complaint = document.createElement('p');
+    complaint.className = 'feedback-date';
+    complaint.textContent = `Complaint ${feedback.complaintNumber || ''}`;
+    const rating = document.createElement('div');
+    rating.className = 'feedback-rating';
+    rating.textContent = '★'.repeat(feedback.rating) + '☆'.repeat(5 - feedback.rating);
+    const comments = document.createElement('div');
+    comments.className = 'feedback-comments';
+    comments.textContent = feedback.comments || '';
+    const status = document.createElement('span');
+    status.className = `feedback-status ${feedback.status === 'PENDING' ? 'status-pending' : 'status-responded'}`;
+    status.textContent = feedback.status.replace(/_/g, ' ');
+    card.append(header, complaint, rating, comments, status);
+    return card;
+}
+
+function showEmptyState(container, message) {
+    const placeholder = document.createElement('p');
+    placeholder.className = 'placeholder';
+    placeholder.textContent = message;
+    container.replaceChildren(placeholder);
+}
+
+function renderFeedbackCards(container, feedback, isOwn) {
+    container.replaceChildren(...feedback.map(item => createFeedbackCard(item, isOwn)));
 }
 
 function filterMyFeedback() {
@@ -334,9 +395,9 @@ function filterMyFeedback() {
     
     const myFeedbackList = document.getElementById('my-feedback-list');
     if (filtered.length === 0) {
-        myFeedbackList.innerHTML = '<p class="placeholder">No matching feedback found</p>';
+        showEmptyState(myFeedbackList, 'No matching feedback found');
     } else {
-        myFeedbackList.innerHTML = filtered.map(fb => createFeedbackCard(fb, true)).join('');
+        renderFeedbackCards(myFeedbackList, filtered, true);
     }
 }
 
@@ -359,7 +420,7 @@ function sortAndDisplayMyFeedback() {
             break;
     }
 
-    document.getElementById('my-feedback-list').innerHTML = sorted.map(fb => createFeedbackCard(fb, true)).join('');
+    renderFeedbackCards(document.getElementById('my-feedback-list'), sorted, true);
 }
 
 function filterAllFeedback() {
@@ -368,9 +429,9 @@ function filterAllFeedback() {
     
     const allFeedbackList = document.getElementById('all-feedback-list');
     if (filtered.length === 0) {
-        allFeedbackList.innerHTML = '<p class="placeholder">No feedback in this category</p>';
+        showEmptyState(allFeedbackList, 'No feedback in this category');
     } else {
-        allFeedbackList.innerHTML = filtered.map(fb => createFeedbackCard(fb, false)).join('');
+        renderFeedbackCards(allFeedbackList, filtered, false);
     }
 }
 
@@ -391,7 +452,7 @@ function sortAndDisplayAllFeedback() {
             break;
     }
 
-    document.getElementById('all-feedback-list').innerHTML = sorted.map(fb => createFeedbackCard(fb, false)).join('');
+    renderFeedbackCards(document.getElementById('all-feedback-list'), sorted, false);
 }
 
 function updateStatistics() {
@@ -475,8 +536,5 @@ function showToast(message, type = 'success') {
 }
 
 function logout() {
-    if (confirm('Are you sure you want to logout?')) {
-        // Redirect to login page or refresh
-        location.href = '/';
-    }
+    BankApi.post('/api/auth/logout', {}).finally(() => window.location.replace('/'));
 }

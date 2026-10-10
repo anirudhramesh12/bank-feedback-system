@@ -3,13 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bank Customer Feedback</title>
+    <meta name="theme-color" content="#173c35">
+    <title>Member Care | Bank Feedback</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <section id="auth-screen" class="auth-screen" hidden>
         <form id="auth-form" class="auth-card">
-            <h1>Bank Feedback</h1>
+            <span class="auth-kicker">MEMBER CARE / 01</span>
+            <h1>Let's talk.</h1>
             <p id="auth-description">Sign in to manage your feedback</p>
             <label for="auth-email">Email</label>
             <input id="auth-email" name="email" type="email" autocomplete="username" required>
@@ -27,24 +32,29 @@
 
     <div class="main-container" id="app-shell" hidden>
         <!-- Sidebar Navigation -->
-        <div class="sidebar">
+        <div class="sidebar" id="customer-sidebar">
             <div class="sidebar-header">
-                <h2>🏦 Bank Feedback</h2>
+                <div class="brand-lockup">
+                    <span class="brand-mark" aria-hidden="true">b.</span>
+                    <div><span class="brand-kicker">BANK / MEMBER CARE</span><h2>In good hands.</h2></div>
+                </div>
             </div>
             <nav class="sidebar-nav">
-                <a href="#feedback-form" class="nav-item active" onclick="switchSection('form')">📝 Submit Feedback</a>
-                <a href="#my-feedback" class="nav-item" onclick="switchSection('history')">📋 My Feedback</a>
-                <a href="#all-feedback" class="nav-item" onclick="switchSection('all')">👥 All Feedback</a>
-                <a href="#profile" class="nav-item" onclick="switchSection('profile')">👤 My Profile</a>
+                <a href="#feedback-form" class="nav-item active" onclick="switchSection('form')"><span>01</span> Leave a note</a>
+                <a href="#my-feedback" class="nav-item" onclick="switchSection('history')"><span>02</span> My cases</a>
+                <a href="#all-feedback" class="nav-item" onclick="switchSection('all')"><span>03</span> Community</a>
+                <a href="#profile" class="nav-item" onclick="switchSection('profile')"><span>04</span> My profile</a>
             </nav>
+            <div class="sidebar-foot"><span class="signal-dot"></span> A better bank, together</div>
         </div>
 
         <!-- Main Content -->
         <div class="content-wrapper">
             <!-- Header -->
             <div class="header">
-                <h1>Customer Feedback System</h1>
+                    <div><span class="page-kicker">MEMBER JOURNAL / 2026</span><h1>Your experience, on record.</h1></div>
                 <div class="header-info">
+                    <button id="nav-toggle" class="nav-toggle" type="button" aria-expanded="false" aria-controls="customer-sidebar">Menu</button>
                     <span id="customer-name">Welcome!</span>
                     <button id="logout-button" class="btn-logout" type="button">Logout</button>
                 </div>
@@ -56,8 +66,8 @@
             <!-- Feedback Form Section -->
             <section id="form-section" class="section active">
                 <div class="form-header">
-                    <h2>Submit Your Feedback</h2>
-                    <p>Help us improve our services</p>
+                    <div><span class="section-index">01 / YOUR VOICE</span><h2>What happened?</h2><p>Start with the detail that matters most.</p></div>
+                    <span class="form-stamp" aria-hidden="true">WE<br>LISTEN</span>
                 </div>
 
                 <!-- Statistics Bar -->

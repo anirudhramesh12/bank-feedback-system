@@ -2,7 +2,6 @@ package com.bankfeedback.controller;
 
 import com.bankfeedback.entity.User;
 import com.bankfeedback.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;

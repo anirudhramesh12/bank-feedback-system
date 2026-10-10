@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('auth-form').addEventListener('submit', submitAuthForm);
     document.getElementById('auth-toggle').addEventListener('click', toggleRegistrationMode);
     document.getElementById('logout-button').addEventListener('click', logout);
+    document.getElementById('nav-toggle').addEventListener('click', toggleCustomerNav);
     initializeCustomerApp();
 });
 
@@ -141,6 +142,8 @@ function setupEventListeners() {
             const section = this.textContent.trim();
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
             this.classList.add('active');
+            document.getElementById('customer-sidebar').classList.remove('open');
+            document.getElementById('nav-toggle').setAttribute('aria-expanded', 'false');
         });
     });
 
@@ -537,4 +540,10 @@ function showToast(message, type = 'success') {
 
 function logout() {
     BankApi.post('/api/auth/logout', {}).finally(() => window.location.replace('/'));
+}
+
+function toggleCustomerNav() {
+    const sidebar = document.getElementById('customer-sidebar');
+    const isOpen = sidebar.classList.toggle('open');
+    document.getElementById('nav-toggle').setAttribute('aria-expanded', String(isOpen));
 }

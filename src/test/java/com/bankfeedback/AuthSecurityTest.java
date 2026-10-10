@@ -14,6 +14,9 @@ import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequ
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import jakarta.servlet.http.HttpSession;
+
+import java.util.Objects;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -41,8 +44,8 @@ class AuthSecurityTest {
     @Test
     void registrationCannotChoosePrivilegedRoleOrReadPassword() throws Exception {
         mockMvc.perform(post("/api/auth/register")
-                        .with(SecurityMockMvcRequestPostProcessors.csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(Objects.requireNonNull(SecurityMockMvcRequestPostProcessors.csrf()))
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
                         .content("""
                                 {"name":"Test Customer","email":"customer@example.com","password":"a-strong-password","role":"ADMIN"}
                                 """))
@@ -60,8 +63,8 @@ class AuthSecurityTest {
 
         MvcResult login = mockMvc.perform(post("/api/auth/login")
                         .session(anonymousSession)
-                        .with(SecurityMockMvcRequestPostProcessors.csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .with(Objects.requireNonNull(SecurityMockMvcRequestPostProcessors.csrf()))
+                        .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
                         .content("""
                                 {"email":"customer@example.com","password":"a-strong-password"}
                                 """))
@@ -69,14 +72,17 @@ class AuthSecurityTest {
                 .andExpect(jsonPath("$.password").doesNotExist())
                 .andReturn();
 
-        MockHttpSession session = (MockHttpSession) login.getRequest().getSession(false);
-        org.junit.jupiter.api.Assertions.assertNotEquals(anonymousSessionId, session.getId());
-        mockMvc.perform(get("/api/auth/me").session(session))
+        HttpSession session = login.getRequest().getSession(false);
+        if (!(session instanceof MockHttpSession authenticatedSession)) {
+            throw new AssertionError("Login did not create a session");
+        }
+        org.junit.jupiter.api.Assertions.assertNotEquals(anonymousSessionId, authenticatedSession.getId());
+        mockMvc.perform(get("/api/auth/me").session(authenticatedSession))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("customer@example.com"));
-        mockMvc.perform(get("/api/feedback").session(session))
+        mockMvc.perform(get("/api/feedback").session(authenticatedSession))
                 .andExpect(status().isForbidden());
-        mockMvc.perform(get("/admin.html").session(session))
+        mockMvc.perform(get("/admin.html").session(authenticatedSession))
                 .andExpect(status().isOk());
     }
 

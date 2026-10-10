@@ -111,7 +111,9 @@ public class FeedbackController {
         boolean canManage = authentication.getAuthorities().stream()
                 .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN")
                         || authority.getAuthority().equals("ROLE_STAFF"));
-        if (!canManage && !feedbackService.belongsToUser(id, authentication.getName())) {
+        if (!canManage && !feedbackService.belongsToUser(
+            java.util.Objects.requireNonNull(id),
+            java.util.Objects.requireNonNull(authentication.getName()))) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Feedback not found");
         }
         return feedbackService.getStatusHistory(id).stream().map(StatusHistoryView::from).toList();
@@ -122,7 +124,9 @@ public class FeedbackController {
         boolean canManage = authentication.getAuthorities().stream()
                 .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN")
                         || authority.getAuthority().equals("ROLE_STAFF"));
-        if (!canManage && !feedbackService.belongsToUser(id, authentication.getName())) {
+        if (!canManage && !feedbackService.belongsToUser(
+            java.util.Objects.requireNonNull(id),
+            java.util.Objects.requireNonNull(authentication.getName()))) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Feedback not found");
         }
         return feedbackService.getResponsesForFeedback(id).stream().map(ResponseView::from).toList();
